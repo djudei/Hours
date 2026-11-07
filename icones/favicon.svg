@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="fond" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6E6CF0"/>
+      <stop offset="1" stop-color="#4B49C8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="230" fill="url(#fond)"/>
+  <!-- Le quart d'heure : l'unité de temps de Hours -->
+  <path d="M512 512 L512 232 A280 280 0 0 1 792 512 Z" fill="#FFFFFF" fill-opacity="0.28"/>
+  <!-- Le cadran -->
+  <circle cx="512" cy="512" r="280" fill="none" stroke="#FFFFFF" stroke-width="56"/>
+  <!-- Les aiguilles -->
+  <line x1="512" y1="512" x2="512" y2="330" stroke="#FFFFFF" stroke-width="56" stroke-linecap="round"/>
+  <line x1="512" y1="512" x2="650" y2="512" stroke="#FFFFFF" stroke-width="56" stroke-linecap="round"/>
+  <circle cx="512" cy="512" r="40" fill="#FFFFFF"/>
+</svg>

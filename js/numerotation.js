@@ -64,7 +64,7 @@ export function prochainNumero(format, codes, periode, lettres = '', type = 'pro
 }
 
 /**
- * « l'Oréal » → LOREAL : lettres et chiffres, sans accents, 6 au plus.
+ * « l'Écume » → LECUME : lettres et chiffres, sans accents, 6 au plus.
  */
 export function nettoyerLettres(texte) {
   return String(texte ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '')

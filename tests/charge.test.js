@@ -1,7 +1,7 @@
 // Charge : même onglet « Workload » que Charge.gs (intitulés en lignes, un mois par colonne, missions une par ligne).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lireIntitulesCharge, lireTableauCharge, zonesDuMois, zonesParDefaut, verifierZones, grilleCharge, moisSuivant } from '../js/charge.js';
+import { INTITULES_PAR_DEFAUT as INTITULES_PAR_DEFAUT_ACTUELS, lireIntitulesCharge, lireTableauCharge, zonesDuMois, zonesParDefaut, verifierZones, grilleCharge, moisSuivant } from '../js/charge.js';
 
 const INTITULES = ['Interne', 'Projets en cours', 'Projets à venir', 'Projets en clôture', 'Développement commercial'];
 const grille = [
@@ -50,4 +50,11 @@ test('écriture : la colonne du mois est remplacée, mois triés, en-têtes "202
   assert.deepEqual(g.find((l) => l[0] === 'Projets à venir'), ['Projets à venir', '', '']);
   assert.deepEqual(g[g.length - 1], ['Modified', '31/10/2026 18:00', '06/11/2026 10:00']);
   assert.equal(moisSuivant('2026-12'), '2027-01');
+});
+
+test('« Projets clôturés » : dans la liste par défaut ; une ancienne liste par défaut jamais modifiée passe à la nouvelle', () => {
+  assert.ok(INTITULES_PAR_DEFAUT_ACTUELS.includes('Projets clôturés'));
+  assert.equal(INTITULES_PAR_DEFAUT_ACTUELS.length, 6);
+  assert.deepEqual(lireIntitulesCharge('Interne | Projets en cours | Projets à venir | Projets en clôture | Développement commercial'), INTITULES_PAR_DEFAUT_ACTUELS);
+  assert.deepEqual(lireIntitulesCharge('Interne | Projets en cours'), ['Interne', 'Projets en cours']);   // liste personnalisée : intacte
 });

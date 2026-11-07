@@ -9,8 +9,9 @@ const ENTETE = 'Title';
 const LIGNE_MODIFIE = 'Modified';
 const ENTETE_ANCIEN_FORMAT = 'Mois';
 const ZONE_SANS_MISSION = '—';
-export const INTITULES_PAR_DEFAUT = ['Interne', 'Projets en cours', 'Projets à venir', 'Projets en clôture', 'Développement commercial'];
-const INTITULES_MAX = 5;
+export const INTITULES_PAR_DEFAUT = ['Interne', 'Projets en cours', 'Projets à venir', 'Projets en clôture', 'Projets clôturés', 'Développement commercial'];
+const INTITULES_MAX = 6;
+const ANCIENS_INTITULES_PAR_DEFAUT = ['Interne', 'Projets en cours', 'Projets à venir', 'Projets en clôture', 'Développement commercial'];
 const ZONES_PAR_DEFAUT = 3;
 const MAX_ELEMENTS_PAR_ZONE = 60;
 const LONGUEUR_MAX_ELEMENT = 300;
@@ -22,6 +23,8 @@ const nettoyer = (texte) => String(texte ?? '').trim().replace(/\s+/g, ' ');
  */
 export function lireIntitulesCharge(texte) {
   const intitules = String(texte ?? '').split('|').map(nettoyer).filter(Boolean);
+  // Ancienne liste par défaut, jamais modifiée : on passe à la nouvelle (avec « Projets clôturés »).
+  if (intitules.join('|') === ANCIENS_INTITULES_PAR_DEFAUT.join('|')) return [...INTITULES_PAR_DEFAUT];
   return intitules.length ? intitules.slice(0, INTITULES_MAX) : null;
 }
 

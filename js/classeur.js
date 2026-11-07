@@ -16,7 +16,7 @@ const REGLAGES_PAR_DEFAUT = [
   ['Working days', 'mon, tue, wed, thu, fri'],
   ['Calculate baseline', 'yes'],
   ['Time-off titles', 'Non travaillé, Off, Congés, Congé, RTT'],
-  ['Workload titles', 'Interne | Projets en cours | Projets à venir | Projets en clôture | Développement commercial'],
+  ['Workload titles', 'Interne | Projets en cours | Projets à venir | Projets en clôture | Projets clôturés | Développement commercial'],
   ['Projects name (1XX)', 'Projets clients'],
   ['3rd category name (2XX)', ''],
   ['Sheet version', '2']

@@ -7,7 +7,7 @@ import { lireIntitulesCharge, INTITULES_PAR_DEFAUT } from './charge.js';
 import { proposerNumero, FORMATS_NUMERO } from './numerotation.js';
 import { LIEN_APPLI_ACTUELLE } from './config.js';
 
-const INTITULES_CASES = 5;
+const INTITULES_CASES = 6;
 const enDateFr = (iso) => (iso ? iso.split('-').reverse().join('/') : '');
 
 /**
@@ -25,7 +25,7 @@ export function ecranReglages(reglagesSheet, vue, actions, { demo }) {
   const base = h('input', { id: 'reglage-base', type: 'checkbox', role: 'switch', class: 'interrupteur', checked: reglages.tempsDeTravail.avecBase });
   const categorieProjet = champ('reglage-cat-projet', reglages.nomCategorieProjet || t('categorie.projet'), { maxlength: 30 });
   const categorieAutre = champ('reglage-cat-autre', reglages.nomCategorieAutre, { maxlength: 30 });
-  const intitules = [...(lireIntitulesCharge(reglages.intitulesChargeTexte) || INTITULES_PAR_DEFAUT), '', '', '', '', ''].slice(0, INTITULES_CASES);
+  const intitules = [...(lireIntitulesCharge(reglages.intitulesChargeTexte) || INTITULES_PAR_DEFAUT), '', '', '', '', '', ''].slice(0, INTITULES_CASES);
   const champsIntitules = intitules.map((valeur, i) => champ(`reglage-zone-${i}`, valeur, { maxlength: 40, 'aria-label': t('reglages.intitule', { numero: i + 1 }) }));
   const jours = ORDRE_JOURS.map((jour) => h('button', {
     type: 'button', class: `jour-pastille${reglages.tempsDeTravail.jours.includes(jour) ? ' actif' : ''}`,

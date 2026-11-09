@@ -1,8 +1,8 @@
 // Démarrage et enchaînement des écrans : connexion → Sheet → Semaine (+ feuille Trier).
 import { CLIENT_ID } from './config.js';
-import { connecter, deconnecter } from './google.js';
-import { chargerSemaine, chargerRecap, exporterSheet, enregistrerReglages, creerSheet, verifierSheet, attribuer, ajouterManuel, renommerManuel, supprimerManuel, sourceGoogle } from './donnees.js';
-import { idSheetDepuisLien } from './regles.js';
+import { connecter, deconnecter, compteGoogle, quandRepriseDemandee, reprendre, abandonnerReprise } from './google.js';
+import { choisirSheet } from './choix-fichier.js';
+import { chargerSemaine, chargerRecap, exporterSheet, enregistrerReglages, creerSheet, verifierSheet, trouverSheets, attribuer, ajouterManuel, renommerManuel, supprimerManuel, sourceGoogle } from './donnees.js';
 import { lundiDe, ajouterJours, dateTexte, resumeSemaine } from './semaine.js';
 import { sourceDemo } from './demo.js';
 import { ecranSemaine } from './ecran-semaine.js';
@@ -14,11 +14,11 @@ import { actionsProjets } from './actions-projets.js';
 import { ecranCharge } from './ecran-charge.js';
 import { actionsCharge } from './actions-charge.js';
 import { ecranReglages } from './ecran-reglages.js';
-import { ecranConnexion, ecranSheet, ecranChargement, ecranErreur, ecranBientot, barreOnglets } from './ecrans.js';
+import { ecranConnexion, ecranSheet, ecranChargement, ecranErreur, ecranBientot, barreOnglets, feuilleReprise } from './ecrans.js';
 import { h } from './dom.js';
 import { t } from './textes.js';
 
-const CLE_SHEET = 'hours.idSheet';
+const CLE_SHEET_ANCIENNE = 'hours.idSheet';
 const JOURS_PAR_SEMAINE = 7;
 const DUREE_MESSAGE_MS = 3500;
 
@@ -40,17 +40,31 @@ let etat = {
   vueCharge: { mois: aujourdhui.slice(0, 7), charge: null, erreur: '', feuille: null, confirmerDuplication: false, enCours: false },
   vueReglages: { enCours: false, erreur: '' },
   vueRecap: { mois: aujourdhui.slice(0, 7), affichage: 'projet', recap: null, erreur: '' },
-  message: ''
+  message: '',
+  reprise: null
 };
 const changer = (modifications) => { etat = { ...etat, ...modifications }; };
 
-// Mémoire du navigateur : seulement l'identifiant du Sheet, pour ne pas le redemander à chaque visite.
+// Mémoire du navigateur : l'identifiant du Sheet, rangé par compte Google (perso et pro ne se mélangent pas).
+// Si la mémoire est vide (iPhone, autre navigateur, changement de téléphone), Hours retrouve le Sheet tout seul.
+const cleSheet = () => `${CLE_SHEET_ANCIENNE}.${compteGoogle() || 'inconnu'}`;
+
 function lireIdSheet() {
   if (estDemo) return 'demo';
-  try { return localStorage.getItem(CLE_SHEET) || ''; } catch { return ''; }
+  try {
+    const id = localStorage.getItem(cleSheet());
+    if (id) return id;
+    // Ancienne mémoire (un seul Sheet, sans compte) : reprise une fois pour le compte connecté, puis vérifiée au chargement.
+    const ancien = localStorage.getItem(CLE_SHEET_ANCIENNE);
+    if (ancien && compteGoogle()) {
+      localStorage.setItem(cleSheet(), ancien);
+      localStorage.removeItem(CLE_SHEET_ANCIENNE);
+    }
+    return ancien || '';
+  } catch { return ''; }
 }
 function ecrireIdSheet(id) {
-  try { id ? localStorage.setItem(CLE_SHEET, id) : localStorage.removeItem(CLE_SHEET); } catch { /* navigation privée : on redemandera */ }
+  try { id ? localStorage.setItem(cleSheet(), id) : localStorage.removeItem(cleSheet()); } catch { /* navigation privée : on le retrouvera */ }
 }
 
 // Les animations d'entrée (écran, feuille) ne se jouent qu'à l'ouverture, pas à chaque mise à jour de l'affichage ;
@@ -72,12 +86,42 @@ function afficher(...contenu) {
     etat.message ? h('p', { class: 'message', role: 'status' }, etat.message) : null
   ].filter(Boolean));
   racine.classList.toggle('stable', memeEcran);
+  majReprise(true);
   const voile = racine.querySelector('.voile');
   if (voile && feuillePrecedente) {
     voile.classList.add('stable');
     voile.querySelector('.feuille').scrollTop = defilementFeuille;
   }
 }
+
+// ---------- Reprise après expiration de la connexion ----------
+// L'action en cours est en pause dans google.js ; cette feuille la relance (ou l'annule) en un appui.
+let repriseAffichee = false;
+
+function majReprise(apresAffichage = false) {
+  racine.querySelector('.voile-reprise')?.remove();
+  if (!etat.reprise) { repriseAffichee = false; return; }
+  const element = feuilleReprise(etat.reprise, {
+    continuer: async () => {
+      changer({ reprise: { enCours: true, erreur: '' } });
+      majReprise();
+      try {
+        await reprendre();
+      } catch (erreur) {
+        if (etat.reprise) { changer({ reprise: { enCours: false, erreur: erreur.message } }); majReprise(); }
+      }
+    },
+    annuler: () => abandonnerReprise()
+  });
+  if (repriseAffichee || !apresAffichage) element.classList.add('stable');
+  repriseAffichee = true;
+  racine.append(element);
+}
+
+quandRepriseDemandee((actif) => {
+  changer({ reprise: actif ? { enCours: false, erreur: '' } : null });
+  majReprise();
+});
 
 // Changer d'onglet ; le Récap relit le Sheet à chaque ouverture (les attributions ont pu changer).
 function choisirOnglet(onglet) {
@@ -103,7 +147,7 @@ function aTrier() {
 
 function rendre() {
   if (etat.onglet === 'projets') return afficher(ecranProjets(etat.donnees, etat.vueProjets, actionsEcranProjets));
-  if (etat.onglet === 'reglages') return afficher(ecranReglages(etat.donnees.reglages, etat.vueReglages, actionsReglages, { demo: estDemo }));
+  if (etat.onglet === 'reglages') return afficher(ecranReglages(etat.donnees.reglages, etat.vueReglages, actionsReglages, { demo: estDemo, compte: compteGoogle() }));
   if (etat.onglet === 'charge') return afficher(ecranCharge(etat.vueCharge, actionsEcranCharge));
   if (etat.onglet === 'recap') return afficher(ecranRecap(etat.donnees, etat.vueRecap, actionsRecap));
   if (etat.onglet !== 'agenda') return afficher(ecranBientot(etat.onglet));
@@ -194,8 +238,17 @@ const actionsReglages = {
     changer({ vueReglages: { enCours: false, erreur: '', saisie: { ...saisie, formatNumero: etat.donnees.reglages.formatNumero } } });
     rendre();
   },
+  changerCompte: async () => {
+    try {
+      await connecter({ autreCompte: true });
+      changer({ donnees: null, onglet: 'agenda' });
+      charger();
+    } catch (erreur) {
+      montrerMessage(erreur.message);
+    }
+  },
   ouvrirSheet: () => window.open(`https://docs.google.com/spreadsheets/d/${encodeURIComponent(lireIdSheet())}/edit`, '_blank', 'noopener'),
-  changerSheet: () => { ecrireIdSheet(''); changer({ donnees: null, onglet: 'agenda' }); demanderSheet(); },
+  changerSheet: () => { ecrireIdSheet(''); changer({ donnees: null, onglet: 'agenda' }); rechercherSheet('', { auto: false }); },
   deconnecter: () => { deconnecter(); changer({ donnees: null, connecte: false, onglet: 'agenda', connexionEnCours: false }); demanderConnexion(); }
 };
 
@@ -209,7 +262,7 @@ async function rafraichir() {
 
 async function charger() {
   const idSheet = lireIdSheet();
-  if (!idSheet) return demanderSheet();
+  if (!idSheet) return rechercherSheet();
   changer({ tri: null });
   afficher(ecranChargement());
   try {
@@ -218,10 +271,15 @@ async function charger() {
     rendre();
     if (donnees.synchro.ajoutes) montrerMessage(t('semaine.synchro', { nombre: donnees.synchro.ajoutes }));
   } catch (erreur) {
+    // Sheet retenu mais plus accessible (autre compte, ou Sheet pas encore choisi depuis Hours) : on cherche les bons.
+    if (!estDemo && (erreur.statut === 403 || erreur.statut === 404)) {
+      ecrireIdSheet('');
+      return rechercherSheet(erreur.message);
+    }
     afficher(ecranErreur({
       message: erreur.message,
       onReessayer: charger,
-      onChangerSheet: estDemo ? null : () => { ecrireIdSheet(''); demanderSheet(); }
+      onChangerSheet: estDemo ? null : () => { ecrireIdSheet(''); rechercherSheet('', { auto: false }); }
     }));
   }
 }
@@ -356,13 +414,37 @@ document.addEventListener('keydown', (evenement) => {
 
 // ---------- Connexion et Sheet ----------
 
-// Premier passage : créer son Sheet Hours (recommandé), ou relier un Sheet Hours existant (vérifié avant usage).
-function demanderSheet(erreur = '', formulaireOuvert = false, enCours = false) {
+// Le Sheet de la personne : retrouvé tout seul s'il n'y en a qu'un ; sinon elle choisit, crée le sien,
+// ou ouvre la fenêtre Google pour en choisir un existant (« J'ai déjà un Sheet Hours »).
+// « auto: false » (Changer de Sheet) : la liste est toujours montrée, même s'il n'y a qu'un Sheet.
+async function rechercherSheet(erreurPrecedente = '', { auto = true } = {}) {
+  afficher(ecranChargement(t('sheet.recherche')));
+  try {
+    const sheets = await trouverSheets({ source });
+    if (auto && sheets.length === 1) return prendreSheet(sheets[0].id);
+    demanderSheet({ choix: sheets, erreur: sheets.length ? '' : erreurPrecedente });
+  } catch (erreur) {
+    demanderSheet({ erreur: erreur.message });
+  }
+}
+
+// Sheet vérifié (onglets et en-têtes de Hours) avant d'être retenu.
+async function prendreSheet(id) {
+  try {
+    await verifierSheet({ idSheet: id, source });
+    ecrireIdSheet(id);
+    charger();
+  } catch (erreur) {
+    demanderSheet({ erreur: erreur.message });
+  }
+}
+
+function demanderSheet({ erreur = '', enCours = false, choix = [] } = {}) {
   afficher(ecranSheet({
-    erreur, enCours, formulaireOuvert,
-    onOuvrirFormulaire: () => demanderSheet('', true),
+    erreur, enCours, choix,
+    onPrendre: (id) => { demanderSheet({ enCours: true, choix }); prendreSheet(id); },
     onCreer: async () => {
-      demanderSheet('', formulaireOuvert, true);
+      demanderSheet({ enCours: true, choix });
       try {
         const id = await creerSheet({ aujourdhui, source });
         ecrireIdSheet(id);
@@ -370,40 +452,43 @@ function demanderSheet(erreur = '', formulaireOuvert = false, enCours = false) {
         await charger();
         montrerMessage(t('sheet.cree'));
       } catch (e) {
-        demanderSheet(e.message, formulaireOuvert);
+        demanderSheet({ erreur: e.message, choix });
       }
     },
-    onValider: async (lien) => {
-      const id = idSheetDepuisLien(lien);
-      if (!id) return demanderSheet(t('sheet.invalide'), true);
-      demanderSheet('', true, true);
+    onChoisirExistant: async () => {
       try {
-        await verifierSheet({ idSheet: id, source });
-        ecrireIdSheet(id);
-        charger();
+        const id = await choisirSheet();
+        if (!id) return;
+        demanderSheet({ enCours: true, choix });
+        prendreSheet(id);
       } catch (e) {
-        demanderSheet(e.message, true);
+        demanderSheet({ erreur: e.message, choix });
       }
     }
   }));
 }
 
-function demanderConnexion() {
+// Connexion : au retour, le compte retenu est proposé d'office (un appui) ; sinon Google laisse choisir le compte.
+function demanderConnexion(erreur = '') {
+  const lancer = async (autreCompte) => {
+    changer({ connexionEnCours: true });
+    demanderConnexion();
+    try {
+      await connecter({ autreCompte });
+      changer({ connecte: true, connexionEnCours: false });
+      charger();
+    } catch (e) {
+      changer({ connexionEnCours: false });
+      demanderConnexion(e.message);
+    }
+  };
   afficher(ecranConnexion({
     configure: Boolean(CLIENT_ID),
     enCours: etat.connexionEnCours,
-    onConnecter: async () => {
-      changer({ connexionEnCours: true });
-      demanderConnexion();
-      try {
-        await connecter({ invite: false });
-        changer({ connecte: true });
-        charger();
-      } catch (erreur) {
-        changer({ connexionEnCours: false });
-        afficher(ecranErreur({ message: erreur.message, onReessayer: demanderConnexion }));
-      }
-    }
+    compte: compteGoogle(),
+    erreur,
+    onConnecter: () => lancer(false),
+    onAutreCompte: () => lancer(true)
   }));
 }
 

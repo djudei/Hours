@@ -758,3 +758,16 @@ body.feuille-ouverte { overflow: hidden; }
 @media (prefers-reduced-transparency: reduce) {
   .barre-onglets { background: var(--carte); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
+
+/* ---------- Connexion expirée : feuille « Continuer » (au-dessus de tout, même d'une autre feuille) ---------- */
+.voile-reprise { z-index: 20; }
+.feuille-reprise { padding-top: 22px; gap: 12px; text-align: center; }
+.feuille-reprise h2 { margin: 0; font-size: 22px; line-height: 28px; font-weight: 700; }
+.feuille-reprise .secondaire { margin: 0 8px; font-size: 15px; }
+
+/* ---------- Plusieurs Sheets Hours : liste à toucher ---------- */
+.liste-sheets { width: 100%; max-width: 420px; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; background: var(--carte); }
+.choix-sheet { padding-right: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: left; }
+.choix-sheet + .choix-sheet { border-top: 0.5px solid var(--separateur); }
+.choix-sheet .secondaire { font-size: 13px; white-space: nowrap; }
+.feuille-reprise .bouton-texte { align-self: center; }

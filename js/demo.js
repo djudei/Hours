@@ -38,6 +38,9 @@ export function sourceDemo() {
   let generes = {};
 
   return {
+    async trouverClasseurs() {
+      return [{ id: 'demo', name: 'Hours \u2013 Camille', modifiedTime: '' }];
+    },
     async lireSheet() {
       return {
         reglages: interpreterReglages(onglets.Settings),

@@ -3,44 +3,56 @@ import { h, icone, TRACES } from './dom.js';
 import { t } from './textes.js';
 import { LIEN_APPLI_ACTUELLE } from './config.js';
 
-export function ecranConnexion({ configure, onConnecter, enCours }) {
+export function ecranConnexion({ configure, onConnecter, onAutreCompte, enCours, compte, erreur }) {
+  const bouton = compte ? t('connexion.continuer', { compte }) : t('connexion.bouton');
   return h('section', { class: 'ecran ecran-centre' },
     h('div', { class: 'logo', 'aria-hidden': 'true' }, 'H'),
-    h('h1', {}, t('connexion.titre')),
-    h('p', { class: 'secondaire' }, t('connexion.texte')),
-    configure
-      ? h('button', { class: 'bouton-principal', onclick: onConnecter, disabled: enCours },
-        enCours ? t('connexion.encours') : t('connexion.bouton'))
-      : h('p', { class: 'note signal' }, t('config.manquante')),
-    h('a', { class: 'lien', href: '?demo' }, t('connexion.demo')));
-}
-
-export function ecranSheet({ onCreer, onValider, erreur, enCours, formulaireOuvert, onOuvrirFormulaire }) {
-  const champ = h('input', { id: 'lien-sheet', type: 'url', inputmode: 'url', autocomplete: 'off',
-    placeholder: 'https://docs.google.com/spreadsheets/d/…' });
-  const envoyer = (evenement) => {
-    evenement.preventDefault();
-    onValider(champ.value);
-  };
-  return h('section', { class: 'ecran ecran-centre' },
-    h('div', { class: 'logo', 'aria-hidden': 'true' }, 'H'),
-    h('h1', {}, t('sheet.titre')),
-    h('p', { class: 'secondaire' }, t('sheet.creer.texte')),
+    h('h1', {}, compte ? t('connexion.retour.titre') : t('connexion.titre')),
+    h('p', { class: 'secondaire' }, compte ? t('connexion.retour.texte') : t('connexion.texte')),
     erreur ? h('p', { class: 'erreur', role: 'alert' }, erreur) : null,
-    h('button', { class: 'bouton-principal', onclick: onCreer, disabled: enCours }, enCours ? t('sheet.creer.encours') : t('sheet.creer')),
-    formulaireOuvert
-      ? h('form', { class: 'formulaire', onsubmit: envoyer },
-        h('p', { class: 'secondaire' }, t('sheet.texte')),
-        h('label', { for: 'lien-sheet', class: 'etiquette' }, t('sheet.champ')),
-        champ,
-        h('button', { class: 'bouton-principal bouton-secondaire-plein', type: 'submit', disabled: enCours }, t('sheet.bouton')))
-      : h('button', { class: 'bouton-texte', onclick: onOuvrirFormulaire }, t('sheet.dejaUn')));
+    configure
+      ? h('button', { class: 'bouton-principal', onclick: onConnecter, disabled: enCours }, enCours ? t('connexion.encours') : bouton)
+      : h('p', { class: 'note signal' }, t('config.manquante')),
+    compte && configure ? h('button', { class: 'bouton-texte', onclick: onAutreCompte, disabled: enCours }, t('connexion.autreCompte')) : null,
+    compte ? null : h('a', { class: 'lien', href: '?demo' }, t('connexion.demo')));
 }
 
-export function ecranChargement() {
+const dateCourte = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-FR') : '');
+
+export function ecranSheet({ onCreer, onPrendre, onChoisirExistant, erreur, enCours, choix = [] }) {
+  const plusieurs = choix.length > 0;
+  return h('section', { class: 'ecran ecran-centre' },
+    h('div', { class: 'logo', 'aria-hidden': 'true' }, 'H'),
+    h('h1', {}, plusieurs ? t('sheet.choix.titre') : t('sheet.titre')),
+    h('p', { class: 'secondaire' }, plusieurs ? t('sheet.choix.texte') : t('sheet.creer.texte')),
+    erreur ? h('p', { class: 'erreur', role: 'alert' }, erreur) : null,
+    plusieurs
+      ? h('div', { class: 'liste-sheets' }, choix.map((sheet) => h('button', {
+        class: 'ligne ligne-bouton choix-sheet', onclick: () => onPrendre(sheet.id), disabled: enCours
+      }, h('span', {}, sheet.nom), sheet.modifie ? h('span', { class: 'secondaire' }, t('sheet.choix.modifie', { date: dateCourte(sheet.modifie) })) : null)))
+      : null,
+    h('button', { class: plusieurs ? 'bouton-texte' : 'bouton-principal', onclick: onCreer, disabled: enCours },
+      enCours ? t('sheet.creer.encours') : t('sheet.creer')),
+    h('button', { class: 'bouton-texte', onclick: onChoisirExistant, disabled: enCours }, t('sheet.dejaUn')));
+}
+
+export function ecranChargement(texte = t('semaine.chargement')) {
   return h('section', { class: 'ecran ecran-centre', 'aria-busy': 'true' },
     h('div', { class: 'roue', 'aria-hidden': 'true' }),
-    h('p', { class: 'secondaire' }, t('semaine.chargement')));
+    h('p', { class: 'secondaire' }, texte));
+}
+
+/**
+ * Connexion expirée pendant une action : l'action attend ; « Continuer » la relance, « Annuler » l'arrête sans rien écrire.
+ */
+export function feuilleReprise({ enCours, erreur }, { continuer, annuler }) {
+  return h('div', { class: 'voile voile-reprise' },
+    h('div', { class: 'feuille feuille-reprise', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'reprise-titre' },
+      h('h2', { id: 'reprise-titre' }, t('reprise.titre')),
+      h('p', { class: 'secondaire' }, t('reprise.texte')),
+      erreur ? h('p', { class: 'erreur', role: 'alert' }, erreur) : null,
+      h('button', { class: 'bouton-principal bouton-large', onclick: continuer, disabled: enCours }, enCours ? t('reprise.encours') : t('reprise.bouton')),
+      h('button', { class: 'bouton-texte', onclick: annuler, disabled: enCours }, t('reprise.annuler'))));
 }
 
 export function ecranErreur({ message, onReessayer, onChangerSheet }) {

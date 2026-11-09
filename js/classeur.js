@@ -72,3 +72,14 @@ export function problemeStructure(enTetes) {
   }
   return '';
 }
+
+/**
+ * Fichiers renvoyés par Google Drive → les Sheets Hours, du plus récemment modifié au plus ancien.
+ * Un Sheet Hours s'appelle « Hours » ou « Hours – Prénom » (tiret court, long, ou trait d'union).
+ */
+export function sheetsHours(fichiers) {
+  return (fichiers || [])
+    .filter((f) => f && f.id && /^Hours(\s*[\u2013\u2014-]\s*.+)?$/.test(String(f.name || '').trim()))
+    .map((f) => ({ id: f.id, nom: String(f.name).trim(), modifie: f.modifiedTime || '' }))
+    .sort((a, b) => b.modifie.localeCompare(a.modifie));
+}

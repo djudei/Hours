@@ -9,7 +9,7 @@ import { planCreation, planStatut, planRenommageProjet, planSuppressionProjet, c
 import { dateTexte } from './semaine.js';
 import { construireRecap, dateLimitePour } from './recap.js';
 import { ONGLET_CHARGE, INTITULES_PAR_DEFAUT, lireIntitulesCharge, lireTableauCharge, zonesDuMois, zonesParDefaut, verifierZones, grilleCharge, grilleTableau, moisSuivant } from './charge.js';
-import { nouveauClasseur, problemeStructure, EN_TETES } from './classeur.js';
+import { nouveauClasseur, problemeStructure, sheetsHours, EN_TETES } from './classeur.js';
 import { planRenumerotation, premieresSaisiesParCode, colonneRenumerotee } from './renumerotation.js';
 import { verifierReglages, planReglages, renommagesIntitules, appliquerRenommages } from './reglages-edition.js';
 import { ongletsAEcrire, requetesMiseEnForme, estOngletGenere, lignesMesTotaux } from './export-sheet.js';
@@ -17,6 +17,7 @@ import { planAjoutManuel, planRenommage, planSuppression, verifierSansChevauchem
 
 const API_SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
 const API_AGENDA = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+const API_DRIVE = 'https://www.googleapis.com/drive/v3/files';
 const PLAGES = ['Settings!A1:B', 'Projects!A2:F', 'Entries!A2:K'];
 const ONGLET_SAISIES = 'Entries';
 const COLONNE_CODE = 'F';
@@ -75,6 +76,15 @@ export const sourceGoogle = {
       requests: [{ deleteDimension: { range: { sheetId: onglet.properties.sheetId, dimension: 'ROWS',
         startIndex: numeroLigne - 1, endIndex: numeroLigne } } }]
     });
+  },
+
+  /** Google Sheets visibles par Hours (accès limité : seulement ceux créés ou choisis depuis Hours). */
+  async trouverClasseurs() {
+    const parametres = new URLSearchParams({
+      q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and name contains 'Hours'",
+      fields: 'files(id,name,modifiedTime)', orderBy: 'modifiedTime desc', pageSize: '20', spaces: 'drive'
+    });
+    return (await lireGoogle(`${API_DRIVE}?${parametres}`)).files || [];
   },
 
   /** Crée un Google Sheet dans le Drive de la personne ; renvoie { spreadsheetId, sheets }. */
@@ -497,6 +507,13 @@ export async function creerSheet({ aujourdhui, source = sourceGoogle }) {
 /**
  * Sheet existant relié par son lien : vérifie que c'est bien un Sheet Hours (onglets et en-têtes), sinon erreur.
  */
+/**
+ * Les Sheets Hours de la personne : [{ id, nom, modifie }], le plus récent d'abord.
+ */
+export async function trouverSheets({ source = sourceGoogle } = {}) {
+  return sheetsHours(await source.trouverClasseurs());
+}
+
 export async function verifierSheet({ idSheet, source = sourceGoogle }) {
   const structure = await source.lireStructure(idSheet);
   const noms = Object.keys(EN_TETES);

@@ -2,7 +2,7 @@
 // Sheet existant relié par son lien : on vérifie que c'est bien un Sheet Hours avant de s'en servir.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nouveauClasseur, problemeStructure } from '../js/classeur.js';
+import { nouveauClasseur, problemeStructure, sheetsHours } from '../js/classeur.js';
 
 test('nouveau Sheet : « Hours », 3 onglets, en-têtes, réglages par défaut, suivi au 1er du mois', () => {
   const c = nouveauClasseur({ aujourdhui: '2026-11-06', fuseau: 'Europe/Paris' });
@@ -28,4 +28,18 @@ test('Sheet relié : onglet absent ou autres en-têtes → message ; Sheet Hours
   assert.equal(problemeStructure({ Projects: ['Code', 'Name', 'Type', 'Status'], Entries: ['Id', 'Date', 'Start', 'End', 'Minutes', 'Project code', 'Source', 'Event id', 'Title', 'Auto-assigned', 'Modified'] }), '');
   assert.match(problemeStructure({ Projects: null, Entries: [] }), /Projects/);
   assert.match(problemeStructure({ Projects: ['Code', 'Name', 'Type', 'Status'], Entries: ['Id', 'Date'] }), /Entries/);
+});
+
+test('Sheets Hours trouvés dans le Drive : seulement les bons noms, le plus récent d\'abord', () => {
+  const trouves = sheetsHours([
+    { id: 'a', name: 'Hours – Camille', modifiedTime: '2026-11-01T10:00:00Z' },
+    { id: 'b', name: 'Hours', modifiedTime: '2026-11-08T10:00:00Z' },
+    { id: 'c', name: 'Hours-Camille', modifiedTime: '2026-10-01T10:00:00Z' },
+    { id: 'd', name: 'Mes Hours 2025', modifiedTime: '2026-11-09T10:00:00Z' },
+    { id: 'e', name: 'Hoursmeter', modifiedTime: '2026-11-09T10:00:00Z' },
+    { name: 'Hours – sans id' }
+  ]);
+  assert.deepEqual(trouves.map((s) => s.id), ['b', 'a', 'c']);
+  assert.equal(trouves[1].nom, 'Hours – Camille');
+  assert.deepEqual(sheetsHours(undefined), []);
 });

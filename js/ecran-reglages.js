@@ -13,7 +13,7 @@ const enDateFr = (iso) => (iso ? iso.split('-').reverse().join('/') : '');
 /**
  * vue : { enCours, erreur } ; actions : { enregistrer(saisie), ouvrirSheet(), changerSheet(), deconnecter() }
  */
-export function ecranReglages(reglagesSheet, vue, actions, { demo }) {
+export function ecranReglages(reglagesSheet, vue, actions, { demo, compte = '' }) {
   // Pendant un aperçu de renumérotation (ou après une erreur), le formulaire garde ce qui a été tapé.
   const reglages = vue.saisie ? depuisSaisie(reglagesSheet, vue.saisie) : reglagesSheet;
   const champ = (id, valeur, attributs = {}) => h('input', { id, type: 'text', value: valeur ?? '', ...attributs });
@@ -89,6 +89,8 @@ export function ecranReglages(reglagesSheet, vue, actions, { demo }) {
       h('div', { class: 'champ-ligne' }, h('span', {}, equipe === 'manager' ? t('reglages.equipe.responsable') : equipe === 'member' ? t('reglages.equipe.membre') : t('reglages.equipe.aucune')))),
     aide(t('reglages.equipe.aide')),
     ...groupe(t('reglages.sheet'),
+      demo || !compte ? null : h('div', { class: 'champ-ligne' }, h('span', {}, t('reglages.compte')), h('span', { class: 'secondaire' }, compte)),
+      demo ? null : h('button', { class: 'ligne ligne-bouton lien-ligne', type: 'button', onclick: actions.changerCompte }, t('reglages.changerCompte')),
       demo ? null : h('button', { class: 'ligne ligne-bouton lien-ligne', type: 'button', onclick: actions.ouvrirSheet }, t('reglages.ouvrirSheet')),
       demo ? null : h('button', { class: 'ligne ligne-bouton lien-ligne', type: 'button', onclick: actions.changerSheet }, t('reglages.changerSheet')),
       h('a', { class: 'ligne ligne-bouton lien-ligne', href: LIEN_APPLI_ACTUELLE, target: '_blank', rel: 'noopener' }, t('reglages.appliActuelle')),

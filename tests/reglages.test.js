@@ -50,3 +50,9 @@ test('intitulés de la ToDo renommés : même case, autre texte → la ligne sui
   const occupe = { ...tableau, mois: { '2026-11': { 'En cours': 'A', 'À venir': 'B' } } };
   assert.throws(() => appliquerRenommages(occupe, { 'En cours': 'À venir' }));
 });
+
+test('rubriques de la ToDo : les 6 par défaut (avec « Projets clôturés ») s\'enregistrent ; 7 → erreur', () => {
+  const six = ['Interne', 'Projets en cours', 'Projets à venir', 'Projets en clôture', 'Projets clôturés', 'Développement commercial'];
+  assert.doesNotThrow(() => verifierReglages({ ...saisie, intitulesCharge: six }));
+  assert.throws(() => verifierReglages({ ...saisie, intitulesCharge: [...six, 'En trop'] }));
+});

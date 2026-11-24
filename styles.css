@@ -789,3 +789,11 @@ body.feuille-ouverte { overflow: hidden; }
 .choix-sheet + .choix-sheet { border-top: 0.5px solid var(--separateur); }
 .choix-sheet .secondaire { font-size: 13px; white-space: nowrap; }
 .feuille-reprise .bouton-texte { align-self: center; }
+
+/* Feuille occupée (enregistrement) : elle ne défile plus pendant l'attente. */
+.feuille.occupee { overflow: hidden; }
+
+/* Créneau ajouté à la main : formulaire de modification. */
+.modification { display: flex; flex-direction: column; gap: 10px; }
+.groupe-modification { display: flex; gap: 8px; }
+.groupe-modification > button { flex: 1; }
